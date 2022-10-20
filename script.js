@@ -6,36 +6,47 @@
 ===========*/
 const account1 = {
   owner: 'Abanoub Mokhles',
-  movements: [200, 450, -400, 3000, -650, -130, 70, 1300],
+  movements: [200, 455.23, -306.5, 25000, -642.21, -133.9, 79.97, 1300],
   interestRate: 1.2, // %
   pin: 1111,
+
+  movementsDates: [
+    '2019-11-18T21:31:17.178Z',
+    '2019-12-23T07:42:02.383Z',
+    '2020-01-28T09:15:04.904Z',
+    '2020-04-01T10:17:24.185Z',
+    '2020-05-08T14:11:59.604Z',
+    '2020-05-27T17:01:17.194Z',
+    '2020-07-11T23:36:17.929Z',
+    '2020-07-12T10:51:36.790Z',
+  ],
+  currency: 'EUR',
+  locale: 'pt-PT', // de-DE
 };
 
 const account2 = {
-  owner: 'Jessica Davis',
+  owner: 'John Duo',
   movements: [5000, 3400, -150, -790, -3210, -1000, 8500, -30],
   interestRate: 1.5,
   pin: 2222,
+
+  movementsDates: [
+    '2019-11-01T13:15:33.035Z',
+    '2019-11-30T09:48:16.867Z',
+    '2019-12-25T06:04:23.907Z',
+    '2020-01-25T14:18:46.235Z',
+    '2020-02-05T16:33:06.386Z',
+    '2020-04-10T14:43:26.374Z',
+    '2020-06-25T18:49:59.371Z',
+    '2020-07-26T12:01:20.894Z',
+  ],
+  currency: 'USD',
+  locale: 'en-US',
 };
 
-const account3 = {
-  owner: 'Steven Thomas Williams',
-  movements: [200, -200, 340, -300, -20, 50, 400, -460],
-  interestRate: 0.7,
-  pin: 3333,
-};
+const accounts = [account1, account2];
 
-const account4 = {
-  owner: 'Sarah Smith',
-  movements: [430, 1000, 700, 50, 90],
-  interestRate: 1,
-  pin: 4444,
-};
-
-const accounts = [account1, account2, account3, account4];
-
-/*  App Elements
-==================*/
+// ============== Elements ============== //
 const labelWelcome = document.querySelector('.welcome');
 const labelDate = document.querySelector('.date');
 const labelBalance = document.querySelector('.balance__value');
@@ -61,219 +72,194 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
-/*  Track current User
-========================*/
-let currentUser;
+// ============== Display Movements ============== //
+let displayMovements = function (account, sorted = false) {
+  containerMovements.textContent = '';
 
-/*  App Functions
-====================*/
+  // Check for Sorted State variable
+  let moves = sorted
+    ? account.movements.slice().sort((a, b) => a - b)
+    : account.movements;
 
-// Make usernames
-let usernames = function (accounts) {
-  accounts.forEach(function (account) {
-    account.username = account.owner
+  moves.forEach(function (move, index) {
+    let movementType = move > 0 ? 'deposit' : 'withdrawal';
+
+    let movement = `<div class="movements__row">
+    <div class="movements__type movements__type--${movementType}">${
+      index + 1
+    } ${movementType}</div>
+    <div class="movements__value">${move} €</div>
+  </div>`;
+
+    // Insert the movement into the movements container from top to bottom ⏬
+    containerMovements.insertAdjacentHTML('afterbegin', movement);
+  });
+};
+
+// ============== Make Usernames ============== //
+let makeUsernames = function (accounts) {
+  accounts.forEach(acc => {
+    acc.username = acc.owner
       .toLowerCase()
       .split(' ')
-      .map(word => word[0])
+      .map(word => {
+        return word[0];
+      })
       .join('');
   });
 };
-usernames(accounts);
+makeUsernames(accounts);
 
-// Display Balance
-let displayBalance = function (foundUser) {
-  foundUser.balance = foundUser.movements.reduce((acc, cval) => acc + cval, 0);
-  labelBalance.textContent = `${foundUser.balance} €`;
+// ============== Calculate and Display Balance ============== //
+let calcDisplayBalance = function (account) {
+  account.balance = account.movements.reduce((acc, move, i) => {
+    return acc + move;
+  }, 0);
+  labelBalance.textContent = `${account.balance} €`;
+};
+// ============== Display Username ============== //
+let displayUsername = function (account) {
+  labelWelcome.textContent = `Welcome Back, ${account.owner.split(' ')[0]}`;
 };
 
-// Display Movements
-let displayMovements = function (foundUser, sort = false) {
-  containerMovements.innerHTML = '';
-
-  // Adabting to sorting
-  let movs = sort
-    ? foundUser.movements.slice().sort((a, b) => a - b)
-    : foundUser.movements;
-
-  movs.forEach(function (movement, index) {
-    let type = movement > 0 ? 'deposit' : 'withdrawal';
-    let movementElement = `<div class="movements__row">
-    <div class="movements__type movements__type--${type}">${
-      index + 1
-    } ${type}</div>
-    <div class="movements__value">${movement} €</div>
-  </div>`;
-    containerMovements.insertAdjacentHTML('afterbegin', movementElement);
-  });
-};
-
-// Display Summary
-let displaySummary = function (account) {
+// ============== Calculate and Display Summary ============== //
+let calcDisplaySummary = function (account) {
   let income = account.movements
-    .filter(cval => cval > 0)
-    .reduce((acc, cval) => acc + cval, 0);
+    .filter(move => move > 0)
+    .reduce((acc, move) => acc + move, 0);
   labelSumIn.textContent = `${income} €`;
 
-  let expences = account.movements
-    .filter(cval => cval < 0)
-    .reduce((acc, cval) => acc + cval, 0);
-  labelSumOut.textContent = `${Math.abs(expences)} €`;
+  let expences = Math.abs(
+    account.movements
+      .filter(move => move < 0)
+      .reduce((acc, move) => acc + move, 0)
+  );
+  labelSumOut.textContent = `${expences} €`;
 
   let interest = account.movements
-    .filter(cval => cval > 0)
-    .map(cval => (cval * account.interestRate) / 100)
-    .filter(cval => cval >= 1)
-    .reduce((acc, cval) => acc + cval, 0);
+    .filter(move => move > 0)
+    .map(move => (move * account.interestRate) / 100)
+    .filter(intr => intr > 1)
+    .reduce((acc, move) => acc + move, 0);
   labelSumInterest.textContent = `${interest} €`;
 };
 
-let updateUI = function (foundUser) {
-  // Display Balance
-  displayBalance(foundUser);
-  // Display Movements
-  displayMovements(foundUser);
-  // Display Summary
-  displaySummary(foundUser);
+// ============== Display UI ============== //
+let displayUI = function (account) {
+  displayMovements(account);
+  calcDisplayBalance(account);
+  calcDisplaySummary(account);
+  displayUsername(account);
 };
-/*  Login User
-====================*/
-btnLogin.addEventListener('click', function (e) {
-  // Prevent default submitting
-  e.preventDefault();
+// ============== Login ============== //
+let activeUser;
 
-  // 1. Check if user exists
-  currentUser = accounts.find(function (user) {
-    return user.username === inputLoginUsername.value;
+btnLogin.addEventListener('click', function (evt) {
+  // Prevent Default Reload
+  evt.preventDefault();
+
+  // Find User
+  activeUser = accounts.find(account => {
+    return account.username === inputLoginUsername.value;
   });
 
-  // 2. Check if pin number is correct
-  if (currentUser?.pin === Number(inputLoginPin.value)) {
-    // Display UI + Welcome Message
-    labelWelcome.textContent = `Welcome back, ${
-      currentUser.owner.split(' ')[0]
-    }`;
-    containerApp.style =
-      'opacity: 1; visibility: visible; pointer-events: all;';
-
-    // Empty input elements
+  // Check Pin
+  if (activeUser?.pin === Number(inputLoginPin.value)) {
+    // Remove values and Cursor from Input Fields
     inputLoginUsername.value = inputLoginPin.value = '';
-
-    // Lose focus
     inputLoginPin.blur();
 
-    // Update UI
-    updateUI(currentUser);
+    // Display UI
+    containerApp.style = 'opacity: 1;visibility: visible;pointer-events: all; ';
+
+    // Display MOVEMENTS - BALANCE - SUMMARY
+    displayUI(activeUser);
   }
 });
 
-/*  Transfer Money to Other Users
-====================================*/
-btnTransfer.addEventListener('click', function (e) {
-  // Prevent Default loading on submit
-  e.preventDefault();
+// ============== Transfer Money ============== //
+btnTransfer.addEventListener('click', function (evt) {
+  // Prevent Default Reload
+  evt.preventDefault();
 
-  // Step.1 Storing recipient & amount
   let transferAmount = Number(inputTransferAmount.value);
-  let recipient = accounts.find(function (account) {
+  let transferToUser = accounts.find(account => {
     return account.username === inputTransferTo.value;
   });
 
-  // Step.2 Validate operation
+  // Check Transfer Criteria
   if (
-    recipient &&
-    recipient.username !== currentUser.username &&
-    currentUser.balance >= transferAmount &&
-    transferAmount > 0
+    transferAmount > 0 &&
+    transferToUser &&
+    activeUser.balance >= transferAmount &&
+    transferToUser !== activeUser.username
   ) {
-    // Step.3 Add amount to Recipient - Remove amount from Current
-    currentUser.movements.push(-transferAmount);
-    recipient.movements.push(transferAmount);
+    // Add & Remove Amount
+    activeUser.movements.push(-transferAmount);
+    transferToUser.movements.push(transferAmount);
 
-    // Step.4 Update UI
-    updateUI(currentUser);
+    // Remove Focus and Input Values
+    inputTransferAmount.value = inputTransferTo.value = '';
+    inputTransferAmount.blur();
+
+    // Update UI
+    displayUI(activeUser);
   }
-  // remove values from input fields
-  inputTransferAmount.value = inputTransferTo.value = '';
-  inputTransferAmount.blur();
 });
 
-/*  Close an account
-======================*/
-btnClose.addEventListener('click', function (e) {
-  // Prevent Default Reloading
-  e.preventDefault();
+// ============== Request a Loan ============== //
+btnLoan.addEventListener('click', function (evt) {
+  // Prevent Default Reload
+  evt.preventDefault();
 
-  // Check if entered user equals current user
+  // Loan Criteria
+  let loanAmount = Number(inputLoanAmount.value);
   if (
-    inputCloseUsername.value === currentUser.username &&
-    Number(inputClosePin.value) === currentUser.pin
+    loanAmount > 0 &&
+    activeUser.movements.some(mov => mov >= loanAmount * 0.1)
   ) {
-    // find current user index in the accounts array
-    let cIndex = accounts.findIndex(function (acc) {
-      return acc.username === currentUser.username;
+    activeUser.movements.push(loanAmount);
+
+    // Update UI
+    displayUI(activeUser);
+  }
+});
+
+// ============== Close Account ============== //
+btnClose.addEventListener('click', function (evt) {
+  // Prevent Default Reload
+  evt.preventDefault();
+
+  if (
+    inputCloseUsername.value === activeUser.username &&
+    Number(inputClosePin.value) === activeUser.pin
+  ) {
+    // Find Index of Current Account
+    let accIndex = accounts.findIndex(acc => {
+      return acc.username === inputCloseUsername.value;
     });
 
-    // Delete that account
-    accounts.splice(cIndex, 1);
+    // Delete Account
+    accounts.splice(accIndex, 1);
 
-    // Hide the layout
-    containerApp.style =
-      'opacity: 0; visibility: hidden; pointer-events: none;';
-
-    // remove values from input fields
+    // Remove Focus and Input Values
     inputCloseUsername.value = inputClosePin.value = '';
     inputClosePin.blur();
+
+    // Hide UI
+    containerApp.style = 'opacity: 0;visibility: hidden;pointer-events: none; ';
   }
 });
 
-/*  Request a Loan
-======================*/
-btnLoan.addEventListener('click', function (e) {
-  e.preventDefault();
+// ============== Sort Movements ============== //
+let sorted = false;
+btnSort.addEventListener('click', function (evt) {
+  // Prevent Default Reload
+  evt.preventDefault();
 
-  let loan = Number(inputLoanAmount.value);
+  // Call Display Movements with sorted optional Parameter
+  displayMovements(activeUser, !sorted);
 
-  if (loan > 0 && currentUser.movements.some(mv => mv >= loan * 0.1)) {
-    currentUser.movements.push(loan);
-    // Update UI
-    updateUI(currentUser);
-  }
-  inputLoanAmount.value = '';
+  // Reverse Sorted option
+  sorted = !sorted;
 });
-
-/*  Sorting Movements
-=======================*/
-let sorted = false; // a state variable
-btnSort.addEventListener('click', function (e) {
-  e.preventDefault();
-  displayMovements(currentUser, !sorted);
-  sorted = !sorted; // flipping the current state
-});
-
-// 1. add all deposites together
-let allDepos = accounts
-  .flatMap(acc => acc.movements)
-  .filter(cur => cur > 0)
-  .reduce((acc, cur) => acc + cur, 0);
-console.log(allDepos);
-
-// 2. how many depos > 1000
-let depos10001 = accounts
-  .flatMap(acc => acc.movements)
-  .filter(cur => cur >= 1000).length;
-let depos10002 = accounts
-  .flatMap(acc => acc.movements)
-  .reduce((counter, cur) => (cur >= 1000 ? ++counter : counter), 0);
-console.log(depos10001);
-
-// 3. calculate all deposites and withdrawals
-let { deposites, withdrawals } = accounts
-  .flatMap(acc => acc.movements)
-  .reduce(
-    (sum, cur) => {
-      sum[cur > 0 ? 'deposites' : 'withdrawals'] += cur;
-      return sum;
-    },
-    { deposites: 0, withdrawals: 0 }
-  );
-console.log(deposites, withdrawals);
