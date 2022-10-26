@@ -1,11 +1,9 @@
 'use strict';
+//=========================================//
+//============== BANKIST APP ==============//
+//=========================================//
 
-/*********************************************************/
-/********************** BANKIST APP **********************/
-/*********************************************************/
-
-/*  Data
-===========*/
+//============== Data ==============//
 const account1 = {
   owner: 'Abanoub Mokhles',
   movements: [200, 455.23, -306.5, 25000, -642.21, -133.9, 79.97, 1300],
@@ -19,11 +17,11 @@ const account1 = {
     '2020-04-01T10:17:24.185Z',
     '2020-05-08T14:11:59.604Z',
     '2020-05-27T17:01:17.194Z',
-    '2020-07-11T23:36:17.929Z',
-    '2020-07-12T10:51:36.790Z',
+    '2022-10-23T23:36:17.929Z',
+    '2022-10-24T10:51:36.790Z',
   ],
-  currency: 'EUR',
-  locale: 'pt-PT',
+  currency: 'USD',
+  locale: 'en-US',
 };
 
 const account2 = {
@@ -42,13 +40,13 @@ const account2 = {
     '2020-06-25T18:49:59.371Z',
     '2020-07-26T12:01:20.894Z',
   ],
-  currency: 'USD',
-  locale: 'en-US',
+  currency: 'EUR',
+  locale: 'fr-FR',
 };
 
 const accounts = [account1, account2];
 
-// ============== Elements ============== //
+//============== Elements ==============//
 const labelWelcome = document.querySelector('.welcome');
 const labelDate = document.querySelector('.date');
 const labelBalance = document.querySelector('.balance__value');
@@ -74,6 +72,34 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
+// ============== Movements Dates ============== //
+let formatMoveDates = function (date, locale) {
+  // Calculate difference between now and movement date
+  let dateDiffFun = (date1, date2) =>
+    Math.round(Math.abs(date1 - date2) / (24 * 60 * 60 * 1000));
+
+  let differenceInDates = dateDiffFun(new Date(), date);
+  if (differenceInDates === 0) {
+    return 'Today';
+  } else if (differenceInDates === 1) {
+    return 'Yesterday';
+  } else if (differenceInDates <= 7) {
+    return `${differenceInDates} days ago`;
+  } else {
+    return new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  }
+};
+
+let formatCurrency = function (locale, currency, amount) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+  }).format(amount);
+};
 // ============== Display Movements ============== //
 let displayMovements = function (account, sorted = false) {
   containerMovements.textContent = '';
@@ -86,11 +112,19 @@ let displayMovements = function (account, sorted = false) {
   moves.forEach(function (move, index) {
     let movementType = move > 0 ? 'deposit' : 'withdrawal';
 
+    let movementDate = new Date(account.movementsDates[index]);
+    let formatedDate = formatMoveDates(movementDate, account.locale);
+
     let movement = `<div class="movements__row">
     <div class="movements__type movements__type--${movementType}">${
       index + 1
     } ${movementType}</div>
-    <div class="movements__value">${move.toFixed(2)} €</div>
+    <div class="movements__date">${formatedDate}</div>
+    <div class="movements__value">${formatCurrency(
+      account.locale,
+      account.currency,
+      move
+    )}</div>
   </div>`;
 
     // Insert the movement into the movements container from top to bottom ⏬
@@ -117,8 +151,13 @@ let calcDisplayBalance = function (account) {
   account.balance = account.movements.reduce((acc, move, i) => {
     return acc + move;
   }, 0);
-  labelBalance.textContent = `${account.balance.toFixed(2)} €`;
+  labelBalance.textContent = `${formatCurrency(
+    account.locale,
+    account.currency,
+    account.balance
+  )}`;
 };
+
 // ============== Display Username ============== //
 let displayUsername = function (account) {
   labelWelcome.textContent = `Welcome Back, ${account.owner.split(' ')[0]}`;
@@ -129,21 +168,33 @@ let calcDisplaySummary = function (account) {
   let income = account.movements
     .filter(move => move > 0)
     .reduce((acc, move) => acc + move, 0);
-  labelSumIn.textContent = `${income.toFixed(2)} €`;
+  labelSumIn.textContent = `${formatCurrency(
+    account.locale,
+    account.currency,
+    income
+  )}`;
 
   let expences = Math.abs(
     account.movements
       .filter(move => move < 0)
       .reduce((acc, move) => acc + move, 0)
   );
-  labelSumOut.textContent = `${expences.toFixed(2)} €`;
+  labelSumOut.textContent = `${formatCurrency(
+    account.locale,
+    account.currency,
+    expences
+  )}`;
 
   let interest = account.movements
     .filter(move => move > 0)
     .map(move => (move * account.interestRate) / 100)
     .filter(intr => intr > 1)
     .reduce((acc, move) => acc + move, 0);
-  labelSumInterest.textContent = `${interest.toFixed(2)} €`;
+  labelSumInterest.textContent = `${formatCurrency(
+    account.locale,
+    account.currency,
+    interest
+  )}`;
 };
 
 // ============== Display UI ============== //
@@ -154,7 +205,7 @@ let displayUI = function (account) {
   displayUsername(account);
 };
 // ============== Login ============== //
-let activeUser;
+let activeUser, timer;
 
 btnLogin.addEventListener('click', function (evt) {
   // Prevent Default Reload
@@ -171,8 +222,21 @@ btnLogin.addEventListener('click', function (evt) {
     inputLoginUsername.value = inputLoginPin.value = '';
     inputLoginPin.blur();
 
+    // Display Current Date
+    labelDate.textContent = new Intl.DateTimeFormat(activeUser.locale, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date());
+
     // Display UI
     containerApp.style = 'opacity: 1;visibility: visible;pointer-events: all; ';
+
+    // Start Logout Timer
+    if (timer) clearInterval(timer);
+    timer = startLogoutTimer();
 
     // Display MOVEMENTS - BALANCE - SUMMARY
     displayUI(activeUser);
@@ -200,12 +264,20 @@ btnTransfer.addEventListener('click', function (evt) {
     activeUser.movements.push(-transferAmount);
     transferToUser.movements.push(transferAmount);
 
+    // Push Transfer date
+    activeUser.movementsDates.push(new Date().toISOString());
+    transferToUser.movementsDates.push(new Date().toISOString());
+
     // Remove Focus and Input Values
     inputTransferAmount.value = inputTransferTo.value = '';
     inputTransferAmount.blur();
 
     // Update UI
     displayUI(activeUser);
+
+    // Reset Timer
+    clearInterval(timer);
+    timer = startLogoutTimer();
   }
 });
 
@@ -215,15 +287,26 @@ btnLoan.addEventListener('click', function (evt) {
   evt.preventDefault();
 
   // Loan Criteria
-  let loanAmount = inputLoanAmount.value;
+  let loanAmount = +inputLoanAmount.value;
   if (
     loanAmount > 0 &&
     activeUser.movements.some(mov => mov >= loanAmount * 0.1)
   ) {
-    activeUser.movements.push(loanAmount);
+    setTimeout(function () {
+      activeUser.movements.push(loanAmount);
+      activeUser.movementsDates.push(new Date().toISOString());
 
-    // Update UI
-    displayUI(activeUser);
+      // Update UI
+      displayUI(activeUser);
+    }, 3000);
+
+    // Remove values and Cursor from Input Field
+    inputLoanAmount.value = '';
+    inputLoanAmount.blur();
+
+    // Reset Timer
+    clearInterval(timer);
+    timer = startLogoutTimer();
   }
 });
 
@@ -265,3 +348,39 @@ btnSort.addEventListener('click', function (evt) {
   // Reverse Sorted option
   sorted = !sorted;
 });
+
+// ============== Logout Timer ============== //
+let startLogoutTimer = function () {
+  // logout after 5 minutes
+  let time = 20;
+
+  let handleTime = function () {
+    // Get Minutes and Seconds
+    let minutes = String(Math.trunc(time / 60)).padStart(2, 0);
+    let seconds = String(time % 60).padStart(2, 0);
+
+    // Output Minutes and Seconds
+    labelTimer.textContent = `${minutes}:${seconds}`;
+
+    // Chech if time == 0
+    if (time === 0) {
+      // Logout y hiding UI and changing Welcome message
+      labelWelcome.textContent = `login to get started`;
+
+      // Hide UI
+      containerApp.style =
+        'opacity: 0;visibility: hidden;pointer-events: none; ';
+
+      // stop timer
+      clearInterval(timer);
+    }
+
+    // Decrease total time by 1
+    time--;
+  };
+
+  // get minutes and seconds and decrease them every 1 seconds
+  handleTime();
+  timer = setInterval(handleTime, 1000);
+  return timer;
+};
